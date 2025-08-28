@@ -140,12 +140,13 @@ secrets/
 .env.production
 .env.development
 .env.test
-.env.faceblog
-.env.lifewayusa
-.env.simple
-.env.client.example
-.env.multitenant.example
-.env.platform.example
+# Temporarily allow .env files for VPS deployment setup
+# .env.faceblog
+# .env.lifewayusa
+# .env.simple
+# .env.client.example
+# .env.multitenant.example
+# .env.platform.example
 
 # Build artifacts
 *.map
