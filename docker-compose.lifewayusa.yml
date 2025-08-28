@@ -1,0 +1,165 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+volumes:
+  postgres_lifewayusa_data:
+  redis_lifewayusa_data:
+
+services:
+  # PostgreSQL Database - LifeWay USA
+  postgres-lifewayusa:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: faceblog_lifewayusa
+      POSTGRES_USER: faceblog_lifewayusa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_lifewayusa_data:/var/lib/postgresql/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U faceblog_lifewayusa -d faceblog_lifewayusa"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Redis Cache - LifeWay USA
+  redis-lifewayusa:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_lifewayusa_data:/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # LifeWay USA API
+  lifewayusa-api:
+    image: registry.fbrlive.xyz/faceblog-backend:2025-08-27
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres-lifewayusa
+      DB_PORT: 5432
+      DB_NAME: faceblog_lifewayusa
+      DB_USER: faceblog_lifewayusa
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis-lifewayusa
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: https://lifewayusa.app
+      REACT_APP_API_URL: https://lifewayusaapi.fbrlive.xyz
+      FRONTEND_URL: https://lifewayusaapp.fbrlive.xyz
+      PIXABAY_API_KEY: ${PIXABAY_API_KEY}
+      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
+      PEXELS_API_KEY: ${PEXELS_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    networks:
+      - FBRnet
+    depends_on:
+      - postgres-lifewayusa
+      - redis-lifewayusa
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.lifewayusa-api-secure.rule=Host(`lifewayusaapi.fbrlive.xyz`)"
+        - "traefik.http.routers.lifewayusa-api-secure.entrypoints=websecure"
+        - "traefik.http.routers.lifewayusa-api-secure.tls=true"
+        - "traefik.http.routers.lifewayusa-api-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.lifewayusa-api.loadbalancer.server.port=5000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # LifeWay USA Public Blog
+  lifewayusa-blog:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    environment:
+      REACT_APP_API_URL: https://lifewayusaapi.fbrlive.xyz
+      REACT_APP_SITE_NAME: LifeWay USA
+      REACT_APP_SITE_DESCRIPTION: Compartilhando a Palavra de Deus
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.lifewayusa-blog-secure.rule=Host(`lifewayusa.app`)"
+        - "traefik.http.routers.lifewayusa-blog-secure.entrypoints=websecure"
+        - "traefik.http.routers.lifewayusa-blog-secure.tls=true"
+        - "traefik.http.routers.lifewayusa-blog-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.lifewayusa-blog.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # LifeWay USA Admin Panel
+  lifewayusa-admin:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    environment:
+      REACT_APP_API_URL: https://lifewayusaapi.fbrlive.xyz
+      REACT_APP_SITE_NAME: LifeWay USA - Admin
+      REACT_APP_ADMIN_MODE: true
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.lifewayusa-admin-secure.rule=Host(`lifewayusaadmin.fbrlive.xyz`)"
+        - "traefik.http.routers.lifewayusa-admin-secure.entrypoints=websecure"
+        - "traefik.http.routers.lifewayusa-admin-secure.tls=true"
+        - "traefik.http.routers.lifewayusa-admin-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.lifewayusa-admin.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure

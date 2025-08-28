@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceBlog - Client Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">FaceBlog</h1>
+                        <span class="ml-2 text-sm text-gray-500">Client Management</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600" id="status">Ready</span>
+                        <div class="w-3 h-3 bg-green-500 rounded-full" id="statusDot"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Quick Actions -->
+            <div class="mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button onclick="showCreateForm()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                            ➕ Create New Client
+                        </button>
+                        <button onclick="loadClients()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                            🔄 Refresh List
+                        </button>
+                        <button onclick="exportClients()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                            📊 Export Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Client Form -->
+            <div id="createForm" class="hidden mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Create New Client</h2>
+                    <form id="clientForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
+                            <input type="text" id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+                            <input type="text" id="slug" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Admin Name *</label>
+                            <input type="text" id="adminName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Admin Email *</label>
+                            <input type="email" id="adminEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Custom Domain</label>
+                            <input type="text" id="customDomain" placeholder="blog.client.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Plan</label>
+                            <select id="plan" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="starter">Starter</option>
+                                <option value="pro" selected>Pro</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2 flex space-x-4">
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                                Create Client
+                            </button>
+                            <button type="button" onclick="hideCreateForm()" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Clients List -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">Clients</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URLs</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stats</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Clients will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="messages" class="fixed top-4 right-4 z-50"></div>
+
+    <script>
+        const API_BASE = 'https://api.faceblog.top';
+        const ADMIN_KEY = 'your-admin-api-key'; // Replace with actual key
+
+        // Auto-generate slug from name
+        document.getElementById('name').addEventListener('input', function(e) {
+            const slug = e.target.value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim();
+            document.getElementById('slug').value = slug;
+        });
+
+        function showMessage(message, type = 'success') {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `mb-4 p-4 rounded-lg ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            messageEl.textContent = message;
+            messagesDiv.appendChild(messageEl);
+            
+            setTimeout(() => {
+                messageEl.remove();
+            }, 5000);
+        }
+
+        function updateStatus(message, isError = false) {
+            document.getElementById('status').textContent = message;
+            document.getElementById('statusDot').className = `w-3 h-3 rounded-full ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+        }
+
+        function showCreateForm() {
+            document.getElementById('createForm').classList.remove('hidden');
+        }
+
+        function hideCreateForm() {
+            document.getElementById('createForm').classList.add('hidden');
+            document.getElementById('clientForm').reset();
+        }
+
+        async function createClient(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const payload = {
+                name: document.getElementById('name').value,
+                slug: document.getElementById('slug').value,
+                subdomain: document.getElementById('slug').value,
+                custom_domain: document.getElementById('customDomain').value || null,
+                plan: document.getElementById('plan').value,
+                admin_name: document.getElementById('adminName').value,
+                admin_email: document.getElementById('adminEmail').value,
+                features: {
+                    seo_tools: true,
+                    analytics: true,
+                    custom_domain: !!document.getElementById('customDomain').value,
+                    social_integration: true,
+                    newsletter: true,
+                    comments: true
+                }
+            };
+
+            try {
+                updateStatus('Creating client...', false);
+                
+                const response = await axios.post(`${API_BASE}/api/admin/tenants`, payload, {
+                    headers: {
+                        'Authorization': `Bearer ${ADMIN_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                showMessage(`Client "${payload.name}" created successfully!`);
+                hideCreateForm();
+                loadClients();
+                updateStatus('Ready', false);
+
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showMessage(`Error creating client: ${message}`, 'error');
+                updateStatus('Error', true);
+            }
+        }
+
+        async function loadClients() {
+            try {
+                updateStatus('Loading clients...', false);
+                
+                const response = await axios.get(`${API_BASE}/api/admin/tenants`, {
+                    headers: {
+                        'Authorization': `Bearer ${ADMIN_KEY}`
+                    }
+                });
+
+                const { tenants } = response.data;
+                const tbody = document.getElementById('clientsTable');
+                
+                tbody.innerHTML = tenants.map(tenant => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${tenant.name}</div>
+                            <div class="text-sm text-gray-500">${tenant.slug}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                tenant.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }">
+                                ${tenant.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${tenant.plan}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <div>
+                                <a href="https://${tenant.subdomain}.faceblog.top" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                    ${tenant.subdomain}.faceblog.top
+                                </a>
+                            </div>
+                            ${tenant.custom_domain ? `
+                                <div>
+                                    <a href="https://${tenant.custom_domain}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                        ${tenant.custom_domain}
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div>Users: ${tenant.user_count || 0}</div>
+                            <div>Articles: ${tenant.article_count || 0}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="viewClient('${tenant.id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                                View
+                            </button>
+                            <button onclick="deleteClient('${tenant.id}', '${tenant.name}')" class="text-red-600 hover:text-red-900">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                updateStatus(`${tenants.length} clients loaded`, false);
+
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showMessage(`Error loading clients: ${message}`, 'error');
+                updateStatus('Error loading', true);
+            }
+        }
+
+        async function deleteClient(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"? This will remove all associated data.`)) {
+                return;
+            }
+
+            try {
+                updateStatus('Deleting client...', false);
+                
+                await axios.delete(`${API_BASE}/api/admin/tenants/${id}?confirm=yes`, {
+                    headers: {
+                        'Authorization': `Bearer ${ADMIN_KEY}`
+                    }
+                });
+
+                showMessage(`Client "${name}" deleted successfully!`);
+                loadClients();
+                updateStatus('Ready', false);
+
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showMessage(`Error deleting client: ${message}`, 'error');
+                updateStatus('Error', true);
+            }
+        }
+
+        function viewClient(id) {
+            // Open admin panel for specific tenant
+            window.open(`https://admin.faceblog.top?tenant=${id}`, '_blank');
+        }
+
+        function exportClients() {
+            // Export functionality
+            showMessage('Export functionality coming soon!');
+        }
+
+        // Event listeners
+        document.getElementById('clientForm').addEventListener('submit', createClient);
+
+        // Load clients on page load
+        document.addEventListener('DOMContentLoaded', loadClients);
+    </script>
+</body>
+</html>

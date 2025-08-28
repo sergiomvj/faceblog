@@ -1,0 +1,96 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io                       # ou docker.io
+  IMAGE_NAME: ${{ github.repository }}    # ghcr.io/owner/repo
+  APP_NAME: myapp                         # usado nas labels/stack
+  DEPLOY_DOMAIN: app.seudominio.com       # usado no health-check
+  INTERNAL_PORT: "3000"                   # porta do container
+  TAG: ${{ github.ref_name }}-${{ github.sha }}
+  SHORT_SHA: ${{ github.sha }}            # p/ rollback
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to registry (GHCR exemplo)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Opcional: cache de camadas
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            NODE_ENV=production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      # === Opção A: Portainer Webhook (recomendado/simples) ===
+      - name: Trigger Portainer stack webhook
+        if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Content-Type: application/json" \
+            "${{ secrets.PORTAINER_WEBHOOK_URL }}" \
+            -d "{\"tag\":\"${{ env.TAG }}\"}"
+
+      # === Opção B: SSH no manager Swarm e atualizar serviço ===
+      # exige secrets: SSH_HOST, SSH_USER, SSH_KEY, STACK_NAME, SERVICE_NAME
+      - name: SSH deploy (docker service update)
+        if: ${{ secrets.SSH_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}"
+            echo "Updating service ${{ secrets.SERVICE_NAME }} to $IMAGE"
+            docker service update --image "$IMAGE" --update-order start-first --detach=false ${{ secrets.SERVICE_NAME }}
+
+            echo "Waiting health check at https://${{ env.DEPLOY_DOMAIN }}/health"
+            for i in {1..30}; do
+              code=$(curl -sk -o /dev/null -w "%{http_code}" "https://${{ env.DEPLOY_DOMAIN }}/health")
+              if [ "$code" = "200" ]; then
+                echo "Health OK"
+                exit 0
+              fi
+              sleep 5
+            done
+
+            echo "Health failed. Rolling back service…"
+            docker service rollback ${{ secrets.SERVICE_NAME }}
+            exit 1

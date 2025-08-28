@@ -1,0 +1,32 @@
+{
+  "name": "faceblog-baas",
+  "version": "1.0.0",
+  "description": "Blog-as-a-Service (BaaS) - Multi-tenant blog platform",
+  "main": "index.js",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm start",
+    "build:frontend": "cd frontend && npm run build",
+    "test:frontend": "cd frontend && npm test",
+    "install:frontend": "cd frontend && npm install",
+    "setup": "npm run install:frontend",
+    "start": "npm run dev:frontend"
+  },
+  "keywords": [
+    "blog",
+    "multi-tenant",
+    "saas",
+    "react",
+    "typescript",
+    "tailwind"
+  ],
+  "author": "Sergio Castro",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sergiocastro/faceblog-baas"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

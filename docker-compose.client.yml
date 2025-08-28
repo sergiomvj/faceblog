@@ -1,0 +1,146 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+volumes:
+  postgres_client_data:
+  redis_client_data:
+
+services:
+  # PostgreSQL Database - Client
+  postgres-client:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_client_data:/var/lib/postgresql/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Redis Cache - Client
+  redis-client:
+    image: redis:7-alpine
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_client_data:/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Client API
+  faceblog-client-api:
+    image: registry.fbrlive.xyz/faceblog-backend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${CLIENT_ID}-api-secure.rule=Host(`${CLIENT_ID}api.fbrlive.xyz`)"
+        - "traefik.http.routers.${CLIENT_ID}-api-secure.entrypoints=websecure"
+        - "traefik.http.routers.${CLIENT_ID}-api-secure.tls=true"
+        - "traefik.http.routers.${CLIENT_ID}-api-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${CLIENT_ID}-api.loadbalancer.server.port=5000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Client Public Blog
+  faceblog-client-blog:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${CLIENT_ID}-blog-secure.rule=Host(`${CLIENT_DOMAIN}`)"
+        - "traefik.http.routers.${CLIENT_ID}-blog-secure.entrypoints=websecure"
+        - "traefik.http.routers.${CLIENT_ID}-blog-secure.tls=true"
+        - "traefik.http.routers.${CLIENT_ID}-blog-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${CLIENT_ID}-blog.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Client Admin Panel
+  faceblog-client-admin:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${CLIENT_ID}-admin-secure.rule=Host(`${CLIENT_ID}admin.fbrlive.xyz`)"
+        - "traefik.http.routers.${CLIENT_ID}-admin-secure.entrypoints=websecure"
+        - "traefik.http.routers.${CLIENT_ID}-admin-secure.tls=true"
+        - "traefik.http.routers.${CLIENT_ID}-admin-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${CLIENT_ID}-admin.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure

@@ -1,0 +1,52 @@
+{
+  "name": "modern-blog",
+  "display_name": "Modern Blog",
+  "description": "Template moderno e responsivo para blogs profissionais",
+  "version": "1.0.0",
+  "framework": "nextjs",
+  "features": [
+    "responsive_design",
+    "seo_optimized",
+    "social_sharing",
+    "comments_system",
+    "newsletter_integration",
+    "analytics_ready",
+    "dark_mode",
+    "search_functionality"
+  ],
+  "customizable": {
+    "colors": true,
+    "fonts": true,
+    "layout": true,
+    "components": true
+  },
+  "build_command": "npm run build",
+  "start_command": "npm start",
+  "dev_command": "npm run dev",
+  "requirements": {
+    "node_version": ">=16.0.0",
+    "npm_version": ">=8.0.0"
+  },
+  "environment_variables": [
+    "NEXT_PUBLIC_TENANT_ID",
+    "NEXT_PUBLIC_SUBDOMAIN",
+    "NEXT_PUBLIC_BLOG_NAME",
+    "NEXT_PUBLIC_THEME",
+    "NEXT_PUBLIC_PRIMARY_COLOR",
+    "NEXT_PUBLIC_API_BASE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  ],
+  "deployment": {
+    "type": "static",
+    "build_output": ".next",
+    "public_folder": "public",
+    "supports_serverless": true
+  },
+  "integrations": {
+    "analytics": ["google_analytics", "plausible", "mixpanel"],
+    "comments": ["disqus", "utterances", "giscus"],
+    "newsletter": ["mailchimp", "convertkit", "buttondown"],
+    "social": ["facebook", "twitter", "instagram", "linkedin"]
+  }
+}

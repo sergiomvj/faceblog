@@ -1,0 +1,38 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+services:
+  # Simple Blog Instance - Ready to Deploy
+  faceblog-simple:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    environment:
+      REACT_APP_API_URL: ${BLOG_API_URL}
+      REACT_APP_SITE_NAME: ${BLOG_SITE_NAME}
+      REACT_APP_SITE_DESCRIPTION: ${BLOG_SITE_DESCRIPTION}
+      REACT_APP_BLOG_MODE: true
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${BLOG_ID}-secure.rule=Host(`${BLOG_DOMAIN}`)"
+        - "traefik.http.routers.${BLOG_ID}-secure.entrypoints=websecure"
+        - "traefik.http.routers.${BLOG_ID}-secure.tls=true"
+        - "traefik.http.routers.${BLOG_ID}-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${BLOG_ID}.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure

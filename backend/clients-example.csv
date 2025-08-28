@@ -1,0 +1,5 @@
+name,slug,admin_name,admin_email,custom_domain,plan,website,phone
+LifeWay USA,lifewayusa,John Smith,admin@lifewayusa.app,blog.lifewayusa.app,pro,https://lifewayusa.app,+1-555-0123
+Tech Solutions Inc,techsolutions,Sarah Johnson,sarah@techsolutions.com,blog.techsolutions.com,enterprise,https://techsolutions.com,+1-555-0456
+Creative Agency,creativeagency,Mike Wilson,mike@creativeagency.io,,pro,https://creativeagency.io,+1-555-0789
+Local Restaurant,localrestaurant,Maria Garcia,maria@localrestaurant.com,blog.localrestaurant.com,starter,https://localrestaurant.com,+1-555-0321

@@ -1,0 +1,183 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production builds
+build/
+dist/
+*.tgz
+*.tar.gz
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.vps
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+pm2.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Deployment files
+*.tar.gz
+faceblog-deploy.tar.gz
+
+# SSL certificates
+*.pem
+*.crt
+*.key
+
+# Client setup files
+client-*-setup.json
+batch-results-*.json
+
+# VPS specific
+deploy-complete.sh
+nginx-*.conf
+*.sql
+
+# Docker & Deployment
+docker-compose.override.yml
+.dockerignore
+Dockerfile.dev
+*.dockerfile
+
+# Secrets & Keys
+secrets/
+*.secret
+*.token
+.env.secrets
+
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+.env.faceblog
+.env.lifewayusa
+.env.simple
+.env.client.example
+.env.multitenant.example
+.env.platform.example
+
+# Build artifacts
+*.map
+
+# Old/archived files
+OldFiles/
+*.min.js
+*.min.css
+
+# Cache directories
+.cache/
+.tmp/
+.temp/
+
+# IDE & Editor files
+*.sublime-*
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.history/
+
+# Package managers
+package-lock.json.backup
+yarn.lock.backup
+.pnpm-store/
+
+# Testing
+test-results/
+coverage/
+.nyc_output/
+junit.xml
+
+# Monitoring & Analytics
+.sentry/
+*.analytics

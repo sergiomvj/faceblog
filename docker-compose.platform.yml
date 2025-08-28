@@ -1,0 +1,146 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+volumes:
+  postgres_platform_data:
+  redis_platform_data:
+
+services:
+  # PostgreSQL Database - Platform
+  postgres-platform:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_platform_data:/var/lib/postgresql/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Redis Cache - Platform
+  redis-platform:
+    image: redis:7-alpine
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_platform_data:/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Platform API
+  faceblog-platform-api:
+    image: registry.fbrlive.xyz/faceblog-backend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.platform-api-secure.rule=Host(`api.fbrlive.xyz`)"
+        - "traefik.http.routers.platform-api-secure.entrypoints=websecure"
+        - "traefik.http.routers.platform-api-secure.tls=true"
+        - "traefik.http.routers.platform-api-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.platform-api.loadbalancer.server.port=5000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Platform Dashboard
+  faceblog-platform-app:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.platform-app-secure.rule=Host(`app.fbrlive.xyz`)"
+        - "traefik.http.routers.platform-app-secure.entrypoints=websecure"
+        - "traefik.http.routers.platform-app-secure.tls=true"
+        - "traefik.http.routers.platform-app-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.platform-app.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Platform Blog
+  faceblog-platform-blog:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.platform-blog-secure.rule=Host(`blog.fbrlive.xyz`)"
+        - "traefik.http.routers.platform-blog-secure.entrypoints=websecure"
+        - "traefik.http.routers.platform-blog-secure.tls=true"
+        - "traefik.http.routers.platform-blog-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.platform-blog.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure

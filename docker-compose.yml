@@ -1,0 +1,113 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-faceblog} -d ${DB_NAME:-faceblog}"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Backend API
+  faceblog-backend:
+    image: registry.fbrlive.xyz/faceblog-backend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.faceblog-api-secure.rule=Host(`api.fbrlive.xyz`)"
+        - "traefik.http.routers.faceblog-api-secure.entrypoints=websecure"
+        - "traefik.http.routers.faceblog-api-secure.tls=true"
+        - "traefik.http.routers.faceblog-api-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.faceblog-api.loadbalancer.server.port=5000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Frontend
+  faceblog-frontend:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    env_file:
+      - .env
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.faceblog-web-secure.rule=Host(`blog.fbrlive.xyz`)"
+        - "traefik.http.routers.faceblog-web-secure.entrypoints=websecure"
+        - "traefik.http.routers.faceblog-web-secure.tls=true"
+        - "traefik.http.routers.faceblog-web-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.faceblog-web.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure

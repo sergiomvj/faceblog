@@ -1,0 +1,169 @@
+version: "3.8"
+
+networks:
+  FBRnet:
+    external: true
+
+volumes:
+  postgres_faceblog_data:
+  redis_faceblog_data:
+
+services:
+  # PostgreSQL Database - FaceBlog Platform
+  postgres-faceblog:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: faceblog_platform
+      POSTGRES_USER: faceblog_platform
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_faceblog_data:/var/lib/postgresql/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U faceblog_platform -d faceblog_platform"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # Redis Cache - FaceBlog Platform
+  redis-faceblog:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_faceblog_data:/data
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=false"
+      restart_policy:
+        condition: on-failure
+
+  # FaceBlog Platform API
+  faceblog-api:
+    image: registry.fbrlive.xyz/faceblog-backend:2025-08-27
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres-faceblog
+      DB_PORT: 5432
+      DB_NAME: faceblog_platform
+      DB_USER: faceblog_platform
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis-faceblog
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: https://faceblogblog.fbrlive.xyz,https://faceblogapp.fbrlive.xyz
+      REACT_APP_API_URL: https://faceblogapi.fbrlive.xyz
+      FRONTEND_URL: https://faceblogapp.fbrlive.xyz
+      PLATFORM_MODE: "true"
+      PIXABAY_API_KEY: ${PIXABAY_API_KEY}
+      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
+      PEXELS_API_KEY: ${PEXELS_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    networks:
+      - FBRnet
+    depends_on:
+      - postgres-faceblog
+      - redis-faceblog
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.faceblog-api-secure.rule=Host(`faceblogapi.fbrlive.xyz`)"
+        - "traefik.http.routers.faceblog-api-secure.entrypoints=websecure"
+        - "traefik.http.routers.faceblog-api-secure.tls=true"
+        - "traefik.http.routers.faceblog-api-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.faceblog-api.loadbalancer.server.port=5000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # FaceBlog Platform Dashboard
+  faceblog-app:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    environment:
+      REACT_APP_API_URL: https://faceblogapi.fbrlive.xyz
+      REACT_APP_SITE_NAME: FaceBlog Platform
+      REACT_APP_SITE_DESCRIPTION: Plataforma de Blogs Multi-Tenant
+      REACT_APP_PLATFORM_MODE: "true"
+      REACT_APP_ADMIN_MODE: "true"
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.faceblog-app-secure.rule=Host(`faceblogapp.fbrlive.xyz`)"
+        - "traefik.http.routers.faceblog-app-secure.entrypoints=websecure"
+        - "traefik.http.routers.faceblog-app-secure.tls=true"
+        - "traefik.http.routers.faceblog-app-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.faceblog-app.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # FaceBlog Platform Blog
+  faceblog-blog:
+    image: registry.fbrlive.xyz/faceblog-frontend:2025-08-27
+    environment:
+      REACT_APP_API_URL: https://faceblogapi.fbrlive.xyz
+      REACT_APP_SITE_NAME: FaceBlog
+      REACT_APP_SITE_DESCRIPTION: O Blog da Plataforma FaceBlog
+      REACT_APP_BLOG_MODE: "true"
+    networks:
+      - FBRnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.faceblog-blog-secure.rule=Host(`faceblogblog.fbrlive.xyz`)"
+        - "traefik.http.routers.faceblog-blog-secure.entrypoints=websecure"
+        - "traefik.http.routers.faceblog-blog-secure.tls=true"
+        - "traefik.http.routers.faceblog-blog-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.faceblog-blog.loadbalancer.server.port=3000"
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
