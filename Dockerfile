@@ -3,32 +3,26 @@ FROM node:18-alpine
 # 1. Cria diretório de trabalho
 WORKDIR /app
 
-# 2. Copia APENAS os arquivos de configuração
-COPY package*.json ./
+# 2. Copia os arquivos do projeto
+COPY . .
 
-# 3. Instala as dependências
-RUN npm install
+# 3. Verifica se a pasta frontend existe
+RUN if [ ! -d "frontend" ]; then echo "ERRO: Pasta frontend não encontrada!" && ls -la; exit 1; fi
 
-# 4. Copia TODO o conteúdo do frontend
-COPY frontend ./frontend
-
-# 5. Muda para o diretório do frontend
+# 4. Muda para o diretório do frontend
 WORKDIR /app/frontend
 
-# 6. Instala as dependências do frontend
+# 5. Instala as dependências
 RUN npm install
 
-# 7. Cria a pasta public se não existir
-RUN mkdir -p public
+# 6. Verifica se o public/index.html existe
+RUN if [ ! -f "public/index.html" ]; then echo "ERRO: index.html não encontrado em public/!" && ls -la public/; exit 1; fi
 
-# 8. Copia o index.html para a pasta public
-COPY frontend/public/index.html ./public/
-
-# 9. Faz o build
+# 7. Faz o build
 RUN npm run build
 
-# 10. Expõe a porta
+# 8. Expõe a porta
 EXPOSE 3000
 
-# 11. Comando para iniciar
+# 9. Comando para iniciar
 CMD ["npm", "start"]
