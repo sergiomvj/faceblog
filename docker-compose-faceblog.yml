@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+  app:
+    # 👉 troque pela sua imagem publicada (GHCR/Docker Hub)
+    image: ghcr.io/seu-usuario/multitenant-blog:1.0.0
+    env_file:
+      - .env  # opcional (Portainer também aceita setar env na UI)
+    environment:
+      NODE_ENV: "production"
+      # Ajuste as variáveis abaixo ao seu runtime:
+      NEXTAUTH_URL: "https://blog.fbrlive.xyz"
+      NEXT_PUBLIC_APP_NAME: "Multi-tenant Blog"
+      NEXT_PUBLIC_API_URL: "https://blog.fbrlive.xyz/api"
+      # Banco libsql (turso-server local) — confirme com seu ORM/driver:
+      # Exemplo comum: libsql://host:port?authToken=XYZ
+      DATABASE_URL: "libsql://db:8080?authToken=${TURSO_AUTH_TOKEN}"
+      # Cache/sessão
+      REDIS_URL: "redis://redis:6379"
+      # Liveblocks interno (se usar):
+      LIVEBLOCKS_URL: "http://liveblocks:4000"
+    networks:
+      - FBRnet
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        order: start-first
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+
+        # ===== API (prioridade maior para casar primeiro /api)
+        - "traefik.http.routers.blog-api.rule=Host(`blog.fbrlive.xyz`) && PathPrefix(`/api`)"
+        - "traefik.http.routers.blog-api.entrypoints=websecure"
+        - "traefik.http.routers.blog-api.tls=true"
+        - "traefik.http.routers.blog-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.blog-api.priority=100"
+        - "traefik.http.routers.blog-api.middlewares=security-headers@file"
+        - "traefik.http.routers.blog-api.service=blog-api"
+        - "traefik.http.services.blog-api.loadbalancer.server.port=3001"
+
+        # ===== WEB (restante das rotas)
+        - "traefik.http.routers.blog-web.rule=Host(`blog.fbrlive.xyz`)"
+        - "traefik.http.routers.blog-web.entrypoints=websecure"
+        - "traefik.http.routers.blog-web.tls=true"
+        - "traefik.http.routers.blog-web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.blog-web.middlewares=security-headers@file"
+        - "traefik.http.routers.blog-web.service=blog-web"
+        - "traefik.http.services.blog-web.loadbalancer.server.port=3000"
+
+    # Garanta que a imagem tenha curl ou troque por wget
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db:
+    image: ghcr.io/tursodatabase/turso-server:latest
+    environment:
+      TURSO_DB_NAME: "multitenant_blog"
+      TURSO_DB_AUTH_TOKEN: "${TURSO_AUTH_TOKEN}"
+      TURSO_HTTP_PORT: "8080"
+      TURSO_ADDR: "0.0.0.0:8080"
+    volumes:
+      - db_data:/var/lib/turso
+    networks:
+      - FBRnet
+    deploy:
+      labels:
+        - "traefik.enable=false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/v1/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - FBRnet
+    deploy:
+      labels:
+        - "traefik.enable=false"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  liveblocks:
+    image: liveblocks/liveblocks-server:latest
+    environment:
+      LIVEBLOCKS_SECRET_KEY: "${LIVEBLOCKS_SECRET_KEY}"
+      LIVEBLOCKS_PORT: "4000"
+    networks:
+      - FBRnet
+    deploy:
+      labels:
+        - "traefik.enable=false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  FBRnet:
+    external: true
