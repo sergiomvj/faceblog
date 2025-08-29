@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: faceblog
+      POSTGRES_USER: faceblog
+      POSTGRES_PASSWORD: faceblog123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - traefik_default
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - traefik_default
+
+  faceblog-api:
+    build: 
+      context: https://github.com/appgomaia/faceblog.git#master:backend
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=postgresql://faceblog:faceblog123@postgres:5432/faceblog
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.faceblog-api.rule=Host('faceblogapi.fbrlive.xyz')"
+      - "traefik.http.services.faceblog-api.loadbalancer.server.port=5000"
+
+  faceblog-app:
+    build:
+      context: https://github.com/appgomaia/faceblog.git#master:frontend
+    environment:
+      - REACT_APP_API_URL=https://faceblogapi.fbrlive.xyz
+    depends_on:
+      - faceblog-api
+    networks:
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.faceblog-app.rule=Host('faceblogapp.fbrlive.xyz')"
+      - "traefik.http.services.faceblog-app.loadbalancer.server.port=80"
+
+volumes:
+  postgres_data:
+
+networks:
+  traefik_default:
+    external: true
