@@ -3,22 +3,26 @@ FROM node:18-alpine
 # Diretório de trabalho
 WORKDIR /app
 
-# Copia APENAS os arquivos necessários
+# 1. Copia package.json e package-lock.json
 COPY package*.json ./
-COPY frontend/package*.json ./frontend/
 
-# Instala as dependências raiz e do frontend
+# 2. Instala as dependências
 RUN npm install
-RUN cd frontend && npm install
 
-# Copia o restante do código
+# 3. Copia TODO o código do frontend
 COPY . .
 
-# Build da aplicação
-RUN cd frontend && npm run build
+# 4. Muda para o diretório do frontend
+WORKDIR /app/frontend
 
-# Expõe a porta
+# 5. Instala as dependências do frontend
+RUN npm install
+
+# 6. Faz o build
+RUN npm run build
+
+# 7. Expõe a porta
 EXPOSE 3000
 
-# Comando para iniciar o app
+# 8. Comando para iniciar
 CMD ["npm", "start"]
