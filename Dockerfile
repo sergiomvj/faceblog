@@ -1,28 +1,34 @@
 FROM node:18-alpine
 
-# Diretório de trabalho
+# 1. Cria diretório de trabalho
 WORKDIR /app
 
-# 1. Copia package.json e package-lock.json
+# 2. Copia APENAS os arquivos de configuração
 COPY package*.json ./
 
-# 2. Instala as dependências
+# 3. Instala as dependências
 RUN npm install
 
-# 3. Copia TODO o código do frontend
-COPY . .
+# 4. Copia TODO o conteúdo do frontend
+COPY frontend ./frontend
 
-# 4. Muda para o diretório do frontend
+# 5. Muda para o diretório do frontend
 WORKDIR /app/frontend
 
-# 5. Instala as dependências do frontend
+# 6. Instala as dependências do frontend
 RUN npm install
 
-# 6. Faz o build
+# 7. Cria a pasta public se não existir
+RUN mkdir -p public
+
+# 8. Copia o index.html para a pasta public
+COPY frontend/public/index.html ./public/
+
+# 9. Faz o build
 RUN npm run build
 
-# 7. Expõe a porta
+# 10. Expõe a porta
 EXPOSE 3000
 
-# 8. Comando para iniciar
+# 11. Comando para iniciar
 CMD ["npm", "start"]
