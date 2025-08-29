@@ -1,22 +1,25 @@
 FROM node:18-alpine
 
-# Diretório de trabalho
+# 1. Cria diretório de trabalho
 WORKDIR /app
 
-# Copia os arquivos de dependência do frontend
+# 2. Copia os arquivos do frontend
 COPY frontend/package*.json ./
 
-# Instala as dependências
+# 3. Instala as dependências
 RUN npm install
 
-# Copia o restante do código do frontend
-COPY frontend/ .
+# 4. Copia o restante do código
+COPY frontend/ ./
 
-# Build da aplicação
+# 5. Faz o build
 RUN npm run build
 
-# Configura o servidor web
+# 6. Instala o servidor estático
+RUN npm install -g serve
+
+# 7. Expõe a porta
 EXPOSE 3000
 
-# Comando para iniciar o app
-CMD ["npm", "start"]
+# 8. Inicia o servidor
+CMD ["serve", "-s", "dist", "-l", "3000"]
