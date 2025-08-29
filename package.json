@@ -22,9 +22,9 @@
   "author": "Sergio Castro",
   "license": "MIT",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/sergiocastro/faceblog-baas"
-  },
+  "type": "git",
+  "url": "https://github.com/sergiomvj/faceblog.git"
+},
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
