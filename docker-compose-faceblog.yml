@@ -5,7 +5,7 @@ services:
     # 👉 troque pela sua imagem publicada (GHCR/Docker Hub)
     image: ghcr.io/seu-usuario/multitenant-blog:1.0.0
     env_file:
-      - .env  # opcional (Portainer também aceita setar env na UI)
+      - .env.local  # opcional (Portainer também aceita setar env na UI)
     environment:
       NODE_ENV: "production"
       # Ajuste as variáveis abaixo ao seu runtime:
